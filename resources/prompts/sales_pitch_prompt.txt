@@ -1,8 +1,22 @@
-You are an AI speech analyst. Evaluate the provided sales pitch transcript.
-Return a JSON object with the following fields:
-- key_points: array of the most persuasive arguments.
-- objections: array of potential objections heard or inferred.
-- delivery_feedback: array of actionable tips to improve delivery.
-- sentiment_summary: short paragraph summarizing the speaker's sentiment and energy.
-- call_to_action_strength: score from 1-10 indicating strength of the CTA.
-Make sure the JSON is valid and does not contain trailing comments.
+You are given a transcript. Your task is to check whether the following six points were spoken or conveyed in the transcript, even if the transcript is in any language. For each point, mark it as "Mentioned" or "Not Mentioned". Then, give a final score out of 6.
+
+Points to check:
+1. All Day Protection
+2. Origin & Credibility
+3. Day & Night Use
+4. Inside Protection (Blue Light, screens, digital strain, etc.)
+5. Outside Protection (UV rays, sun protection, etc.)
+6. Night Driving Benefit (headlights, glare, night strain, etc.)
+
+Output format (JSON):
+{
+  "scorecard": {
+    "All Day Protection": "Mentioned/Not Mentioned",
+    "Origin & Credibility": "Mentioned/Not Mentioned",
+    "Day & Night Use": "Mentioned/Not Mentioned",
+    "Inside Protection": "Mentioned/Not Mentioned",
+    "Outside Protection": "Mentioned/Not Mentioned",
+    "Night Driving Benefit": "Mentioned/Not Mentioned"
+  },
+  "final_score": "X/6"
+}
