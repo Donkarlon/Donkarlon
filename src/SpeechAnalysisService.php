@@ -10,7 +10,7 @@ use App\Lib\WhisperTranscriber;
 class SpeechAnalysisService
 {
     private Config $config;
-    private GoogleDriveClient $driveClient;
+    private ?GoogleDriveClient $driveClient;
     private VideoProcessor $videoProcessor;
     private WhisperTranscriber $transcriber;
     private GeminiClient $geminiClient;
@@ -19,7 +19,7 @@ class SpeechAnalysisService
     {
         $this->config = $config;
         $credentialsPath = $config->get('google_drive.credentials_path');
-        $this->driveClient = new GoogleDriveClient($credentialsPath);
+        $this->driveClient = $credentialsPath ? new GoogleDriveClient($credentialsPath) : null;
 
         $tempDir = $config->get('analysis.temp_dir', sys_get_temp_dir() . '/video-audio-cache');
         $this->videoProcessor = new VideoProcessor($tempDir);
@@ -37,15 +37,27 @@ class SpeechAnalysisService
         );
     }
 
-    public function processPitch(string $pitchKey, int $limit = 1): array
+    public function processPitch(string $pitchKey, int $limit = 1, ?string $localDirectory = null): array
     {
-        $folderMappings = $this->config->get('google_drive.folder_mappings', []);
-        if (!isset($folderMappings[$pitchKey])) {
-            throw new \InvalidArgumentException('Unknown pitch key: ' . $pitchKey);
+        if ($limit < 1) {
+            return [];
         }
 
-        $folderId = $folderMappings[$pitchKey];
-        $files = $this->driveClient->listFiles($folderId, $limit);
+        if ($localDirectory !== null) {
+            $files = $this->listLocalFiles($localDirectory, $limit);
+        } else {
+            $folderMappings = $this->config->get('google_drive.folder_mappings', []);
+            if (!isset($folderMappings[$pitchKey])) {
+                throw new \InvalidArgumentException('Unknown pitch key: ' . $pitchKey);
+            }
+
+            if ($this->driveClient === null) {
+                throw new \RuntimeException('Google Drive credentials are not configured.');
+            }
+
+            $folderId = $folderMappings[$pitchKey];
+            $files = $this->driveClient->listFiles($folderId, $limit);
+        }
 
         $results = [];
         foreach ($files as $file) {
@@ -57,20 +69,46 @@ class SpeechAnalysisService
 
     private function processFile(array $file): array
     {
-        $fileId = $file['id'];
-        $name = $file['name'];
-        $tempDir = sys_get_temp_dir() . '/speech-analysis';
-        if (!is_dir($tempDir)) {
-            if (!mkdir($tempDir, 0777, true) && !is_dir($tempDir)) {
-                throw new \RuntimeException('Unable to create temp directory: ' . $tempDir);
-            }
-        }
-
-        $videoPath = $tempDir . '/' . $name;
+        $name = $file['name'] ?? null;
+        $videoPath = $file['local_path'] ?? null;
+        $cleanupVideo = false;
         $audioPath = null;
 
         try {
-            $this->driveClient->downloadFile($fileId, $videoPath);
+            if ($videoPath === null) {
+                if ($this->driveClient === null) {
+                    throw new \RuntimeException('Google Drive client is not configured.');
+                }
+
+                $fileId = $file['id'] ?? null;
+                if ($fileId === null) {
+                    throw new \InvalidArgumentException('Missing file ID for Google Drive download.');
+                }
+
+                if ($name === null) {
+                    throw new \InvalidArgumentException('Missing file name for Google Drive download.');
+                }
+
+                $tempDir = sys_get_temp_dir() . '/speech-analysis';
+                if (!is_dir($tempDir)) {
+                    if (!mkdir($tempDir, 0777, true) && !is_dir($tempDir)) {
+                        throw new \RuntimeException('Unable to create temp directory: ' . $tempDir);
+                    }
+                }
+
+                $videoPath = $tempDir . '/' . $name;
+                $cleanupVideo = true;
+
+                $this->driveClient->downloadFile($fileId, $videoPath);
+            } else {
+                if ($name === null) {
+                    $name = basename($videoPath);
+                }
+
+                if (!is_file($videoPath)) {
+                    throw new \RuntimeException('Local video not found at ' . $videoPath);
+                }
+            }
 
             $audioPath = $this->videoProcessor->extractAudio($videoPath);
             $transcriptData = $this->transcriber->transcribe($audioPath);
@@ -102,12 +140,45 @@ class SpeechAnalysisService
                 'analysis' => $analysis,
             ];
         } finally {
-            if (is_file($videoPath)) {
+            if ($cleanupVideo && $videoPath && is_file($videoPath)) {
                 @unlink($videoPath);
             }
             if ($audioPath && is_file($audioPath)) {
                 @unlink($audioPath);
             }
         }
+    }
+
+    private function listLocalFiles(string $directory, int $limit): array
+    {
+        if (!is_dir($directory)) {
+            throw new \InvalidArgumentException('Local directory not found: ' . $directory);
+        }
+
+        $files = [];
+        $iterator = new \FilesystemIterator($directory, \FilesystemIterator::SKIP_DOTS);
+        foreach ($iterator as $fileInfo) {
+            if ($fileInfo->isFile()) {
+                $files[] = [
+                    'id' => null,
+                    'name' => $fileInfo->getFilename(),
+                    'local_path' => $fileInfo->getPathname(),
+                    'modifiedTime' => date('c', $fileInfo->getMTime()),
+                    'mimeType' => null,
+                    'mtime' => $fileInfo->getMTime(),
+                ];
+            }
+        }
+
+        usort($files, static function (array $a, array $b): int {
+            return $b['mtime'] <=> $a['mtime'];
+        });
+
+        $files = array_slice($files, 0, $limit);
+
+        return array_map(static function (array $file): array {
+            unset($file['mtime']);
+            return $file;
+        }, $files);
     }
 }

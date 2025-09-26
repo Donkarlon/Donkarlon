@@ -8,6 +8,24 @@ spl_autoload_register(function ($class) {
 
     $relativeClass = substr($class, strlen($prefix));
     $relativePath = str_replace('\\', '/', $relativeClass) . '.php';
+
+    $namespaceRoots = [
+        'Lib\\' => __DIR__ . '/../lib/',
+    ];
+
+    foreach ($namespaceRoots as $namespacePrefix => $baseDir) {
+        if (strncmp($relativeClass, $namespacePrefix, strlen($namespacePrefix)) === 0) {
+            $trimmedClass = substr($relativeClass, strlen($namespacePrefix));
+            $mappedPath = str_replace('\\', '/', $trimmedClass) . '.php';
+            $mappedFile = $baseDir . $mappedPath;
+
+            if (file_exists($mappedFile)) {
+                require $mappedFile;
+                return;
+            }
+        }
+    }
+
     $locations = [
         __DIR__ . '/../src/' . $relativePath,
         __DIR__ . '/../lib/' . $relativePath,
@@ -24,21 +42,26 @@ spl_autoload_register(function ($class) {
 use App\Config;
 use App\SpeechAnalysisService;
 
-$options = getopt('', ['config:', 'pitch:', 'limit::']);
+$options = getopt('', ['config:', 'pitch::', 'limit::', 'local-dir::']);
 
-if (!$options || empty($options['config']) || empty($options['pitch'])) {
-    fwrite(STDERR, "Usage: php analyze_sales_pitch.php --config=/path/to/config.php --pitch=key [--limit=1]\n");
+$localDir = $options['local-dir'] ?? null;
+
+if (!$options || empty($options['config']) || ($localDir === null && empty($options['pitch']))) {
+    fwrite(
+        STDERR,
+        "Usage: php analyze_sales_pitch.php --config=/path/to/config.php [--pitch=key] [--limit=1] [--local-dir=/videos]\n"
+    );
     exit(1);
 }
 
 $configPath = $options['config'];
-$pitchKey = $options['pitch'];
+$pitchKey = $options['pitch'] ?? 'local';
 $limit = isset($options['limit']) ? (int) $options['limit'] : 1;
 
 try {
     $config = new Config($configPath);
     $service = new SpeechAnalysisService($config);
-    $results = $service->processPitch($pitchKey, $limit);
+    $results = $service->processPitch($pitchKey, $limit, $localDir);
     echo json_encode($results, JSON_PRETTY_PRINT) . PHP_EOL;
 } catch (Throwable $e) {
     fwrite(STDERR, 'Error: ' . $e->getMessage() . PHP_EOL);
