@@ -50,8 +50,20 @@ php scripts/analyze_sales_pitch.php \
     --limit=1
 ```
 
-- `--pitch` corresponds to a key defined in `google_drive.folder_mappings`.
+- `--pitch` corresponds to a key defined in `google_drive.folder_mappings` (or is optional when using `--local-dir`).
 - `--limit` determines how many recent files to process from the folder.
+- `--local-dir` lets you process the newest files from a local directory instead of Google Drive.
+
+To run the analysis against videos stored locally, provide a directory path:
+
+```bash
+php scripts/analyze_sales_pitch.php \
+    --config=config/config.php \
+    --local-dir=/path/to/videos \
+    --limit=1
+```
+
+When `--local-dir` is provided, the script sorts files by their modification time and processes the most recent entries without downloading from Google Drive.
 
 Transcripts will be stored under `storage/transcripts/` and the Gemini report will be saved to `storage/reports/` with matching base filenames.
 
