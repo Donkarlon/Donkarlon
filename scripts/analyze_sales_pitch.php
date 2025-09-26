@@ -8,6 +8,24 @@ spl_autoload_register(function ($class) {
 
     $relativeClass = substr($class, strlen($prefix));
     $relativePath = str_replace('\\', '/', $relativeClass) . '.php';
+
+    $namespaceRoots = [
+        'Lib\\' => __DIR__ . '/../lib/',
+    ];
+
+    foreach ($namespaceRoots as $namespacePrefix => $baseDir) {
+        if (strncmp($relativeClass, $namespacePrefix, strlen($namespacePrefix)) === 0) {
+            $trimmedClass = substr($relativeClass, strlen($namespacePrefix));
+            $mappedPath = str_replace('\\', '/', $trimmedClass) . '.php';
+            $mappedFile = $baseDir . $mappedPath;
+
+            if (file_exists($mappedFile)) {
+                require $mappedFile;
+                return;
+            }
+        }
+    }
+
     $locations = [
         __DIR__ . '/../src/' . $relativePath,
         __DIR__ . '/../lib/' . $relativePath,
