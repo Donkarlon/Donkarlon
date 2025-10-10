@@ -9,4 +9,8 @@ return [
         'prompt_template' => __DIR__ . '/../resources/prompts/optical_measurement_prompt.txt',
         'report_dir' => __DIR__ . '/../storage/measurements',
     ],
+    'measurements' => [
+        'prompt_template' => __DIR__ . '/../resources/prompts/optical_measurement_prompt.txt',
+        'report_dir' => __DIR__ . '/../storage/measurements',
+    ],
 ];
