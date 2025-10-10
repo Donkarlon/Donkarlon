@@ -1,0 +1,165 @@
+{
+  "session_id": "session-001",
+  "calibration": {
+    "device": "iPad Pro LiDAR",
+    "scale_mm_per_unit": 1.0,
+    "reference_artifact_error_mm": 0.12
+  },
+  "patient_profile": {
+    "name": "Jamie Rivera",
+    "age": 44,
+    "primary_use": "computer",
+    "notes": "Prefers 10 degree pantoscopic tilt"
+  },
+  "captures": {
+    "neutral": {
+      "frame_geometry": {
+        "origin": [0.0, 0.0, 0.0],
+        "normal": [0.02, 0.0, 1.0],
+        "vertical_axis": [0.0, 1.0, 0.05],
+        "horizontal_axis": [1.0, 0.02, 0.0]
+      },
+      "pupil_centers": {
+        "left": [-30.5, 18.4, 60.2],
+        "right": [30.9, 18.6, 59.7]
+      },
+      "corneal_apexes": {
+        "left": [-30.3, 18.8, 57.1],
+        "right": [30.7, 18.9, 56.9]
+      },
+      "nose_bridge_point": [0.0, 17.5, 62.0],
+      "lower_rim_points": {
+        "left": [-30.4, -8.6, 61.2],
+        "right": [30.6, -8.4, 61.1]
+      },
+      "lens_inner_samples": {
+        "center": [0.1, 12.2, 58.9],
+        "top": [0.3, 38.2, 58.7],
+        "bottom": [0.2, -22.8, 59.0],
+        "temporal": [46.5, 10.4, 59.5],
+        "nasal": [-46.1, 10.6, 59.5]
+      },
+      "head_pose_vectors": {
+        "forward": [0.02, -0.02, 0.99],
+        "up": [0.01, 0.99, 0.02]
+      },
+      "metadata": {
+        "capture": "neutral",
+        "timestamp": "2024-05-08T10:15:00Z",
+        "quality": "high"
+      }
+    },
+    "reading": {
+      "frame_geometry": {
+        "origin": [0.1, -1.2, 0.2],
+        "normal": [0.05, -0.12, 0.99],
+        "vertical_axis": [0.0, 0.98, -0.18],
+        "horizontal_axis": [0.99, 0.05, 0.01]
+      },
+      "pupil_centers": {
+        "left": [-30.1, 6.2, 59.5],
+        "right": [30.4, 6.1, 59.0]
+      },
+      "corneal_apexes": {
+        "left": [-29.8, 6.4, 56.5],
+        "right": [30.1, 6.2, 56.1]
+      },
+      "nose_bridge_point": [0.2, 6.0, 61.0],
+      "lower_rim_points": {
+        "left": [-30.3, -8.5, 60.9],
+        "right": [30.5, -8.4, 60.8]
+      },
+      "lens_inner_samples": {
+        "center": [0.2, 11.4, 58.8],
+        "top": [0.3, 36.9, 58.7],
+        "bottom": [0.2, -23.6, 59.2],
+        "temporal": [46.4, 9.9, 59.3],
+        "nasal": [-46.0, 10.1, 59.2]
+      },
+      "head_pose_vectors": {
+        "forward": [0.02, -0.19, 0.98],
+        "up": [0.01, 0.98, 0.19]
+      },
+      "metadata": {
+        "capture": "reading",
+        "timestamp": "2024-05-08T10:15:25Z",
+        "quality": "high"
+      }
+    },
+    "left30": {
+      "frame_geometry": {
+        "origin": [0.4, 0.1, -0.2],
+        "normal": [-0.48, -0.02, 0.88],
+        "vertical_axis": [0.0, 1.0, -0.01],
+        "horizontal_axis": [0.88, -0.02, 0.48]
+      },
+      "pupil_centers": {
+        "left": [-32.2, 18.8, 60.0],
+        "right": [29.5, 18.5, 59.4]
+      },
+      "corneal_apexes": {
+        "left": [-31.9, 18.9, 56.9],
+        "right": [29.2, 18.6, 56.3]
+      },
+      "nose_bridge_point": [0.0, 17.0, 61.8],
+      "lower_rim_points": {
+        "left": [-32.0, -8.4, 60.9],
+        "right": [29.4, -8.3, 60.7]
+      },
+      "lens_inner_samples": {
+        "center": [-1.6, 12.1, 58.4],
+        "top": [-1.0, 37.2, 58.3],
+        "bottom": [-1.3, -22.6, 58.5],
+        "temporal": [42.0, 9.8, 58.8],
+        "nasal": [-50.5, 9.9, 58.7]
+      },
+      "head_pose_vectors": {
+        "forward": [-0.47, -0.03, 0.88],
+        "up": [0.0, 1.0, -0.01]
+      },
+      "metadata": {
+        "capture": "left30",
+        "timestamp": "2024-05-08T10:16:00Z",
+        "quality": "medium",
+        "notes": "Slight occlusion on right rim"
+      }
+    },
+    "right30": {
+      "frame_geometry": {
+        "origin": [-0.3, 0.0, 0.1],
+        "normal": [0.49, -0.01, 0.87],
+        "vertical_axis": [0.01, 1.0, -0.02],
+        "horizontal_axis": [0.87, 0.0, -0.49]
+      },
+      "pupil_centers": {
+        "left": [-29.8, 18.5, 59.4],
+        "right": [32.0, 18.9, 59.9]
+      },
+      "corneal_apexes": {
+        "left": [-29.5, 18.6, 56.2],
+        "right": [31.7, 18.9, 56.8]
+      },
+      "nose_bridge_point": [0.2, 17.1, 61.6],
+      "lower_rim_points": {
+        "left": [-29.6, -8.3, 60.7],
+        "right": [32.1, -8.5, 60.9]
+      },
+      "lens_inner_samples": {
+        "center": [1.8, 11.9, 58.5],
+        "top": [1.2, 36.8, 58.2],
+        "bottom": [1.5, -22.5, 58.6],
+        "temporal": [50.7, 10.0, 58.9],
+        "nasal": [-41.8, 9.7, 58.8]
+      },
+      "head_pose_vectors": {
+        "forward": [0.48, -0.02, 0.87],
+        "up": [0.0, 1.0, -0.02]
+      },
+      "metadata": {
+        "capture": "right30",
+        "timestamp": "2024-05-08T10:16:30Z",
+        "quality": "medium"
+      }
+    }
+  }
+}

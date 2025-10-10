@@ -1,0 +1,71 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Progressive Lens Measurement Studio</title>
+    <link rel="stylesheet" href="styles.css" />
+</head>
+<body>
+    <header class="app-header">
+        <h1>Progressive Lens Measurement Studio</h1>
+        <p>Guided capture workflow for LiDAR-capable tablets and depth-enabled desktops.</p>
+    </header>
+
+    <main class="app-layout">
+        <section class="stage" id="capture-stage">
+            <div class="stage-video">
+                <video id="preview" autoplay playsinline></video>
+                <canvas id="overlay"></canvas>
+                <div class="status-pill" id="status-pill">Initializing sensors…</div>
+            </div>
+            <div class="stage-controls">
+                <button id="start-session" class="primary">Start Session</button>
+                <button id="capture-frame" class="secondary" disabled>Capture Pose</button>
+                <button id="reset-session" class="danger" disabled>Reset</button>
+            </div>
+            <div class="stage-instructions" id="instruction-feed"></div>
+        </section>
+
+        <aside class="timeline" id="timeline">
+            <h2>Capture Checklist</h2>
+            <ol>
+                <li data-step="calibration">Calibration Scan</li>
+                <li data-step="neutral">Neutral Head Pose</li>
+                <li data-step="reading">Reading Posture</li>
+                <li data-step="left30">Left 30° Wrap</li>
+                <li data-step="right30">Right 30° Wrap</li>
+                <li data-step="posture">Posture Sweep</li>
+            </ol>
+            <section class="session-meta">
+                <h3>Session Metadata</h3>
+                <label>Patient Name <input id="patient-name" placeholder="Jamie Rivera" /></label>
+                <label>Primary Use <input id="primary-use" placeholder="Computer" /></label>
+                <label>Notes <textarea id="patient-notes" rows="3"></textarea></label>
+            </section>
+        </aside>
+
+        <section class="data-panel" id="data-panel">
+            <h2>Measurement Preview</h2>
+            <pre id="measurement-json">Awaiting capture…</pre>
+            <div class="actions">
+                <button id="export-session" class="primary" disabled>Export Session JSON</button>
+                <button id="upload-session" class="secondary" disabled>Send to Measurement Service</button>
+            </div>
+        </section>
+    </main>
+
+    <footer class="app-footer">
+        <p>Use a calibration target and ensure LiDAR pass returns a reprojection error &lt; 0.3 mm before capturing fitting data.</p>
+    </footer>
+
+    <template id="instruction-template">
+        <article class="instruction">
+            <h3></h3>
+            <p></p>
+        </article>
+    </template>
+
+    <script type="module" src="app.js"></script>
+</body>
+</html>
