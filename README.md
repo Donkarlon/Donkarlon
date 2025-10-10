@@ -1,76 +1,86 @@
-# Video Speech Analysis Toolkit
+# Progressive Lens Measurement Platform
 
-This project provides a PHP-based workflow for analyzing sales pitch videos. Video files are retrieved from Google Drive, transcribed locally with [Whisper.cpp](https://github.com/ggerganov/whisper.cpp), and summarized using the Gemini API.
+This repository contains a self-contained workflow for capturing, calculating, and auditing all measurements required to dispense custom progressive glasses. LiDAR-capable capture devices feed structured sessions into a PHP measurement engine that produces traceable metrics and a Gemini-backed quality assurance (QA) narrative for the optician.
 
-## Features
-- Fetch sales pitch videos from structured Google Drive folders.
-- Extract audio and produce transcripts via Whisper.cpp without external PHP dependencies.
-- Send transcripts to Gemini for structured speech analysis output.
-- Store generated transcripts and reports locally for auditability.
+## Key capabilities
+- Responsive capture web app that guides LiDAR/RGB depth collection for progressive fitting.
+- Measurement engine that calculates monocular/binocular pupillary distance, fitting height, vertex distance, pantoscopic tilt, frame wrap, frame size, and habitual posture adjustments.
+- Gemini QA integration that validates every session and stores auditable summaries alongside the raw metrics.
+- File-based storage layout that keeps capture exports, QA prompts, and generated reports organized for compliance.
 
-## Project Structure
+> **Note:** All speech-analytics related tooling has been removed. This codebase is now dedicated exclusively to progressive lens measurements.
+
+## Project structure
 ```
-config/                 Configuration templates.
-credentials/            Place Google service account credentials here.
-lib/                    Infrastructure code (API clients, helpers).
-resources/prompts/      Prompt templates used for Gemini analysis.
-scripts/                CLI scripts for running analyses.
-src/                    Core application classes.
-storage/reports/        Generated Gemini analysis reports.
-storage/transcripts/    Generated Whisper transcripts.
+config/                 Configuration templates for the measurement workflow.
+lib/                    Shared infrastructure utilities (e.g., Gemini client).
+resources/examples/     Sample capture exports for testing the measurement CLI.
+resources/prompts/      Prompt templates used for Gemini QA.
+resources/webapp/       Static assets for the LiDAR-ready capture web app.
+scripts/                CLI entry points for the measurement workflow.
+src/                    Core PHP classes, including measurement domain models.
+storage/measurements/   Output directory for generated measurement + QA reports.
 ```
 
 ## Prerequisites
-- PHP 8.1 or higher with `curl`, `json`, and `openssl` extensions enabled.
-- [Whisper.cpp](https://github.com/ggerganov/whisper.cpp) compiled locally, with the binary path configured in `config/config.php`.
-- [FFmpeg](https://ffmpeg.org/) installed and available in your `PATH` for audio extraction from videos.
-- A Google Cloud project with the Drive API enabled and a service account JSON credential that has access to the desired folders.
-- A Gemini API key stored in the `GEMINI_API_KEY` environment variable.
+- PHP 8.1 or higher with the `curl`, `json`, and `openssl` extensions enabled.
+- (Optional) A Gemini API key stored in the `GEMINI_API_KEY` environment variable for cloud QA summaries.
+- LiDAR-capable or depth-enabled hardware to operate the capture web app (for live sessions).
 
 ## Setup
-1. Copy the configuration template and update values as needed:
+1. Copy the configuration template and update the paths and prompt locations as needed:
    ```bash
    cp config/config.example.php config/config.php
    ```
-2. Place your Google service account credential file at `credentials/google-service-account.json` (or update the path in the configuration).
-3. Build Whisper.cpp and update the `whisper.binary_path` and `whisper.model_path` settings to match your environment.
-4. Ensure `ffmpeg` is installed and accessible via the command line.
-5. Export your Gemini API key:
+2. Export your Gemini API key so it is available to the CLI:
    ```bash
    export GEMINI_API_KEY="your-api-key"
    ```
+3. Verify that the `storage/measurements/` directory is writable by the PHP process. A `.gitkeep` file is provided to maintain the directory in version control.
 
-## Running an Analysis
-Use the provided CLI script to pull the latest video from a Drive folder, transcribe it, and generate a Gemini analysis:
+## Capture workflow
+1. Open `resources/webapp/index.html` on a supported device.
+2. Follow the on-screen checklist to perform calibration, neutral gaze, reading posture, wrap, and posture captures.
+3. Export the session JSON once every checklist item is complete. The payload will follow the schema of `resources/examples/measurement-session-sample.json`.
 
-```bash
-php scripts/analyze_sales_pitch.php \
-    --config=config/config.php \
-    --pitch="north-america-q1" \
-    --limit=1
-```
-
-- `--pitch` corresponds to a key defined in `google_drive.folder_mappings` (or is optional when using `--local-dir`).
-- `--limit` determines how many recent files to process from the folder.
-- `--local-dir` lets you process the newest files from a local directory instead of Google Drive.
-
-To run the analysis against videos stored locally, provide a directory path:
+## Generate a measurement report
+Run the CLI script with your configuration file and exported session JSON:
 
 ```bash
-php scripts/analyze_sales_pitch.php \
+php scripts/run_measurement_session.php \
     --config=config/config.php \
-    --local-dir=/path/to/videos \
-    --limit=1
+    --input=resources/examples/measurement-session-sample.json
 ```
 
-When `--local-dir` is provided, the script sorts files by their modification time and processes the most recent entries without downloading from Google Drive.
+If you do not have Gemini credentials available, append `--skip-qa` to generate a deterministic, offline QA summary that still
+includes the most critical measurements:
 
-Transcripts will be stored under `storage/transcripts/` and the Gemini report will be saved to `storage/reports/` with matching base filenames.
+```bash
+php scripts/run_measurement_session.php \
+    --config=config/config.php \
+    --input=resources/examples/measurement-session-sample.json \
+    --skip-qa
+```
 
-## Development Notes
-- Composer is intentionally not used; the project relies on native PHP features.
-- Ensure directories inside `storage/` are writable by the PHP process.
-- The provided prompt can be customized by editing `resources/prompts/sales_pitch_prompt.txt`.
+The script will:
+1. Load the measurement session payload.
+2. Calculate all optical metrics.
+3. Submit the structured payload to Gemini using `resources/prompts/optical_measurement_prompt.txt` (or produce a local summary
+   when QA is skipped).
+4. Persist the combined metrics and QA summary to `storage/measurements/<session-id>-progressive-measurements.json`.
 
-## Disclaimer
-The project scaffolding handles API orchestration, but it does not ship with real credentials or binaries. Configure the environment before running the scripts in production.
+Review the generated JSON file to confirm the numeric measurements and AI QA commentary before dispensing the lenses.
+
+## Automated verification
+To confirm the measurement pipeline is producing metrics end-to-end, run the self-contained test script. It builds a temporary
+configuration, executes the measurement service against the bundled sample capture, and verifies that the key optical
+measurements and QA summary are present in the generated report:
+
+```bash
+php scripts/test_measurement_pipeline.php
+```
+
+## Development notes
+- Composer is not required; autoloading is handled via simple script-based registries.
+- The measurement domain can be extended by adding new calculators within `src/Measurement/MeasurementCalculator.php`.
+- Store calibration artifacts, device certifications, and additional prompts within the `resources/` directory as your optical workflow evolves.
