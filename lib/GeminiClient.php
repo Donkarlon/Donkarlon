@@ -19,13 +19,13 @@ class GeminiClient
         $this->endpoint = rtrim($endpoint, '/');
     }
 
-    public function generateContent(string $prompt, string $transcript): array
+    public function generateContent(string $prompt, string $content): array
     {
         $payload = [
             'contents' => [[
                 'parts' => [
                     ['text' => $prompt],
-                    ['text' => $transcript],
+                    ['text' => $content],
                 ],
             ]],
         ];
