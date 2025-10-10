@@ -21,4 +21,8 @@ return [
         'report_dir' => __DIR__ . '/../storage/reports',
         'temp_dir' => sys_get_temp_dir() . '/video-audio-cache',
     ],
+    'measurements' => [
+        'prompt_template' => __DIR__ . '/../resources/prompts/optical_measurement_prompt.txt',
+        'report_dir' => __DIR__ . '/../storage/measurements',
+    ],
 ];
