@@ -76,6 +76,8 @@ const state = {
   orientation: { alpha: 0, beta: 0, gamma: 0 },
   faceDetector: null,
   lastDetection: null,
+  lastDetectionForOverlay: null,
+  activeMetrics: null,
   rafHandle: null,
 };
 
@@ -245,6 +247,7 @@ async function captureCurrentStep() {
   const pose = buildPoseFromOrientation();
   const capture = buildCapturePayload(step.key, pose);
   state.session.captures[step.key] = capture;
+  state.activeMetrics = computeMeasurementsFromCapture(capture);
   measurementJson.textContent = JSON.stringify(state.session, null, 2);
   markTimeline(step.key);
   nextStep();
@@ -347,23 +350,279 @@ async function detectFaceLoop() {
   try {
     const detections = await state.faceDetector.detect(previewVideo);
     state.lastDetection = detections[0];
-    drawDetection(state.lastDetection);
+    if (state.lastDetection) {
+      state.lastDetectionForOverlay = state.lastDetection;
+    }
+    renderOverlay(state.lastDetection);
   } catch (error) {
     console.warn('Face detector error', error);
     state.lastDetection = null;
-    overlayCtx.clearRect(0, 0, overlayCanvas.width, overlayCanvas.height);
+    renderOverlay(null);
   }
 
   state.rafHandle = requestAnimationFrame(detectFaceLoop);
 }
 
-function drawDetection(detection) {
+function renderOverlay(detection) {
   overlayCtx.clearRect(0, 0, overlayCanvas.width, overlayCanvas.height);
-  if (!detection) return;
-  const { x, y, width, height } = detection.boundingBox;
+  const overlayDetection = detection || state.lastDetectionForOverlay;
+  if (!overlayDetection) {
+    drawPinnedMetrics(null);
+    return;
+  }
+
+  const { x, y, width, height } = overlayDetection.boundingBox;
   overlayCtx.strokeStyle = '#3a68f9';
   overlayCtx.lineWidth = 2;
   overlayCtx.strokeRect(x, y, width, height);
+
+  drawGrid(x, y, width, height);
+  drawLandmarks(overlayDetection);
+  drawMeasurementAugmentation(overlayDetection);
+}
+
+function drawGrid(x, y, width, height) {
+  const cols = 3;
+  const rows = 3;
+  overlayCtx.save();
+  overlayCtx.strokeStyle = 'rgba(58, 104, 249, 0.5)';
+  overlayCtx.lineWidth = 1;
+  for (let i = 1; i < cols; i += 1) {
+    const gx = x + (width / cols) * i;
+    overlayCtx.beginPath();
+    overlayCtx.moveTo(gx, y);
+    overlayCtx.lineTo(gx, y + height);
+    overlayCtx.stroke();
+  }
+  for (let j = 1; j < rows; j += 1) {
+    const gy = y + (height / rows) * j;
+    overlayCtx.beginPath();
+    overlayCtx.moveTo(x, gy);
+    overlayCtx.lineTo(x + width, gy);
+    overlayCtx.stroke();
+  }
+  overlayCtx.restore();
+}
+
+function drawLandmarks(detection) {
+  if (!detection.landmarks) return;
+  overlayCtx.save();
+  overlayCtx.fillStyle = '#00ffd0';
+  detection.landmarks.forEach((landmark) => {
+    if (!landmark.locations) return;
+    landmark.locations.forEach((loc) => {
+      overlayCtx.beginPath();
+      overlayCtx.arc(loc.x, loc.y, 3, 0, Math.PI * 2);
+      overlayCtx.fill();
+    });
+  });
+  overlayCtx.restore();
+}
+
+function drawMeasurementAugmentation(detection) {
+  const { x, y, width, height } = detection.boundingBox;
+  const leftEye = detection.landmarks?.find((l) => l.type === 'leftEye');
+  const rightEye = detection.landmarks?.find((l) => l.type === 'rightEye');
+  const nose = detection.landmarks?.find((l) => l.type === 'nose');
+
+  const fallbackLeft = { x: x + width * 0.35, y: y + height * 0.45 };
+  const fallbackRight = { x: x + width * 0.65, y: y + height * 0.45 };
+  const left = leftEye?.locations?.[0] || fallbackLeft;
+  const right = rightEye?.locations?.[0] || fallbackRight;
+  const nosePoint = nose?.locations?.[0] || { x: x + width * 0.5, y: y + height * 0.55 };
+
+  overlayCtx.save();
+  overlayCtx.strokeStyle = '#00ffd0';
+  overlayCtx.lineWidth = 2;
+
+  // Pupillary distance line
+  overlayCtx.beginPath();
+  overlayCtx.moveTo(left.x, left.y);
+  overlayCtx.lineTo(right.x, right.y);
+  overlayCtx.stroke();
+
+  // Fitting height lines (pupil to lower rim)
+  const leftBottom = { x: left.x, y: y + height };
+  const rightBottom = { x: right.x, y: y + height };
+  overlayCtx.beginPath();
+  overlayCtx.moveTo(left.x, left.y);
+  overlayCtx.lineTo(leftBottom.x, leftBottom.y);
+  overlayCtx.moveTo(right.x, right.y);
+  overlayCtx.lineTo(rightBottom.x, rightBottom.y);
+  overlayCtx.stroke();
+
+  overlayCtx.restore();
+
+  drawPinnedMetrics({
+    anchor: { x, y, width, height, left, right, nose: nosePoint, leftBottom, rightBottom },
+  });
+}
+
+function drawPinnedMetrics(geometry) {
+  const metrics = state.activeMetrics;
+  if (!metrics) return;
+
+  if (!geometry) {
+    drawMetricCard(overlayCanvas.width - 220, 20, metrics);
+    return;
+  }
+
+  const {
+    anchor: { x, y, width, height, left, right, nose, leftBottom, rightBottom },
+  } = geometry;
+
+  const midX = (left.x + right.x) / 2;
+  const midY = (left.y + right.y) / 2 - 12;
+  drawLabel(midX, midY, `PD ${metrics.binocularPD.toFixed(1)} mm`);
+
+  drawLabel(left.x - 70, (left.y + leftBottom.y) / 2, `FH L ${metrics.fittingHeight.left.toFixed(1)} mm`);
+  drawLabel(right.x + 70, (right.y + rightBottom.y) / 2, `FH R ${metrics.fittingHeight.right.toFixed(1)} mm`);
+
+  drawLabel(nose.x - 80, nose.y - 30, `Mono L ${metrics.monocularPD.left.toFixed(1)} mm`);
+  drawLabel(nose.x + 80, nose.y - 30, `Mono R ${metrics.monocularPD.right.toFixed(1)} mm`);
+
+  drawLabel(x - 10, y + height / 2, `Vertex ${metrics.vertexDistance.average.toFixed(1)} mm`, 'right');
+  drawLabel(x + width + 10, y + height / 2, `Tilt ${metrics.pantoscopicTilt.toFixed(1)}°`, 'left');
+  drawLabel(x + width / 2, y + height + 30, `Wrap ${metrics.frameWrap.toFixed(1)}°`);
+}
+
+function drawMetricCard(x, y, metrics) {
+  const lines = [
+    `PD: ${metrics.binocularPD.toFixed(1)} mm`,
+    `Mono PD L/R: ${metrics.monocularPD.left.toFixed(1)} / ${metrics.monocularPD.right.toFixed(1)} mm`,
+    `Fitting Height L/R: ${metrics.fittingHeight.left.toFixed(1)} / ${metrics.fittingHeight.right.toFixed(1)} mm`,
+    `Vertex Distance Avg: ${metrics.vertexDistance.average.toFixed(1)} mm`,
+    `Pantoscopic Tilt: ${metrics.pantoscopicTilt.toFixed(1)}°`,
+    `Frame Wrap: ${metrics.frameWrap.toFixed(1)}°`,
+  ];
+
+  const width = 200;
+  const lineHeight = 18;
+  const height = lineHeight * lines.length + 16;
+
+  overlayCtx.save();
+  overlayCtx.fillStyle = 'rgba(0, 0, 0, 0.65)';
+  overlayCtx.strokeStyle = 'rgba(58, 104, 249, 0.8)';
+  overlayCtx.lineWidth = 1;
+  overlayCtx.beginPath();
+  roundedRectPath(overlayCtx, x, y, width, height, 12);
+  overlayCtx.fill();
+  overlayCtx.stroke();
+
+  overlayCtx.fillStyle = '#f7fbff';
+  overlayCtx.font = '13px "SF Pro Display", "Segoe UI", sans-serif';
+  lines.forEach((line, index) => {
+    overlayCtx.fillText(line, x + 12, y + 20 + index * lineHeight);
+  });
+  overlayCtx.restore();
+}
+
+function drawLabel(x, y, text, align = 'center') {
+  overlayCtx.save();
+  overlayCtx.font = '14px "SF Pro Display", "Segoe UI", sans-serif';
+  overlayCtx.textAlign = align;
+  overlayCtx.textBaseline = 'middle';
+  const paddingX = 10;
+  const textMetrics = overlayCtx.measureText(text);
+  const boxWidth = textMetrics.width + paddingX * 2;
+  const boxHeight = 24;
+  const drawX = align === 'center' ? x - boxWidth / 2 : align === 'right' ? x - boxWidth : x;
+  const drawY = y - boxHeight / 2;
+
+  overlayCtx.fillStyle = 'rgba(0, 0, 0, 0.6)';
+  overlayCtx.strokeStyle = 'rgba(0, 255, 208, 0.8)';
+  overlayCtx.lineWidth = 1;
+  overlayCtx.beginPath();
+  roundedRectPath(overlayCtx, drawX, drawY, boxWidth, boxHeight, 12);
+  overlayCtx.fill();
+  overlayCtx.stroke();
+
+  overlayCtx.fillStyle = '#eaffff';
+  overlayCtx.fillText(text, drawX + paddingX, y);
+  overlayCtx.restore();
+}
+
+function computeMeasurementsFromCapture(capture) {
+  const { pupil_centers, nose_bridge_point, lower_rim_points, corneal_apexes, lens_inner_samples, frame_geometry } =
+    capture;
+  const leftPupil = pupil_centers.left;
+  const rightPupil = pupil_centers.right;
+  const nose = nose_bridge_point || [0, 0, 0];
+
+  const binocularPD = distanceBetween(leftPupil, rightPupil);
+  const monocularPD = {
+    left: Math.abs(leftPupil[0] - nose[0]),
+    right: Math.abs(rightPupil[0] - nose[0]),
+  };
+
+  const fittingHeight = {
+    left: Math.abs((leftPupil?.[1] ?? 0) - (lower_rim_points?.left?.[1] ?? 0)),
+    right: Math.abs((rightPupil?.[1] ?? 0) - (lower_rim_points?.right?.[1] ?? 0)),
+  };
+
+  const vertexLeft = Math.abs((corneal_apexes?.left?.[2] ?? 0) - (lens_inner_samples?.center?.[2] ?? 0));
+  const vertexRight = Math.abs((corneal_apexes?.right?.[2] ?? 0) - (lens_inner_samples?.center?.[2] ?? 0));
+  const vertexDistance = {
+    left: vertexLeft,
+    right: vertexRight,
+    average: (vertexLeft + vertexRight) / 2,
+  };
+
+  const verticalAxis = normalizeVector(frame_geometry?.vertical_axis || [0, 1, 0]);
+  const horizontalAxis = normalizeVector(frame_geometry?.horizontal_axis || [1, 0, 0]);
+  const worldUp = [0, 1, 0];
+
+  const pantoscopicTilt = radiansToDegrees(Math.acos(clamp(dot(verticalAxis, worldUp), -1, 1)));
+  const frameWrap = radiansToDegrees(Math.acos(clamp(dot(horizontalAxis, [1, 0, 0]), -1, 1)));
+
+  return {
+    binocularPD,
+    monocularPD,
+    fittingHeight,
+    vertexDistance,
+    pantoscopicTilt,
+    frameWrap,
+  };
+}
+
+function distanceBetween(a, b) {
+  if (!a || !b) return 0;
+  const dx = (a[0] ?? 0) - (b[0] ?? 0);
+  const dy = (a[1] ?? 0) - (b[1] ?? 0);
+  const dz = (a[2] ?? 0) - (b[2] ?? 0);
+  return Math.sqrt(dx * dx + dy * dy + dz * dz);
+}
+
+function dot(a, b) {
+  return (a?.[0] ?? 0) * (b?.[0] ?? 0) + (a?.[1] ?? 0) * (b?.[1] ?? 0) + (a?.[2] ?? 0) * (b?.[2] ?? 0);
+}
+
+function normalizeVector(v) {
+  const mag = Math.hypot(v?.[0] ?? 0, v?.[1] ?? 0, v?.[2] ?? 0);
+  if (mag === 0) return [0, 0, 0];
+  return [(v[0] ?? 0) / mag, (v[1] ?? 0) / mag, (v[2] ?? 0) / mag];
+}
+
+function clamp(value, min, max) {
+  return Math.min(Math.max(value, min), max);
+}
+
+function radiansToDegrees(rad) {
+  return (rad * 180) / Math.PI;
+}
+
+function roundedRectPath(ctx, x, y, width, height, radius) {
+  const r = Math.min(radius, width / 2, height / 2);
+  ctx.moveTo(x + r, y);
+  ctx.lineTo(x + width - r, y);
+  ctx.quadraticCurveTo(x + width, y, x + width, y + r);
+  ctx.lineTo(x + width, y + height - r);
+  ctx.quadraticCurveTo(x + width, y + height, x + width - r, y + height);
+  ctx.lineTo(x + r, y + height);
+  ctx.quadraticCurveTo(x, y + height, x, y + height - r);
+  ctx.lineTo(x, y + r);
+  ctx.quadraticCurveTo(x, y, x + r, y);
+  ctx.closePath();
 }
 
 function cross(a, b) {
@@ -379,12 +638,15 @@ function resetSession() {
   if (state.rafHandle) cancelAnimationFrame(state.rafHandle);
   state.currentStepIndex = -1;
   state.session = null;
+  state.activeMetrics = null;
+  state.lastDetectionForOverlay = null;
   measurementJson.textContent = 'Awaiting capture…';
   instructionFeed.innerHTML = '';
   captureButton.disabled = true;
   exportButton.disabled = true;
   uploadButton.disabled = true;
   statusPill.textContent = 'Session reset';
+  renderOverlay(null);
 }
 
 function cloneCaptureTemplate(obj) {
