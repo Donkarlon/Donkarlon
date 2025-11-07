@@ -3,6 +3,8 @@
 !/storage/measurements/
 /storage/measurements/*
 !/storage/measurements/.gitkeep
+!/storage/quizzes/
+!/storage/quizzes/*.json
 /credentials/*
 !/credentials/.gitkeep
 /config/config.php

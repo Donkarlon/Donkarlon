@@ -1,0 +1,50 @@
+{
+    "Lenskart Vision Science": [
+        {
+            "question": "What is the primary purpose of a progressive lens?",
+            "type": "multiple_choice",
+            "options": {
+                "A": "To provide distance correction only",
+                "B": "To provide both distance and near correction seamlessly",
+                "C": "To reduce blue light exposure",
+                "D": "To tint lenses for outdoor use"
+            },
+            "answer": "B",
+            "explanation": "Progressive lenses blend distance, intermediate, and near power without visible lines."
+        },
+        {
+            "question": "True or False: Pantoscopic tilt adjustments can influence perceived reading power in progressive lenses.",
+            "type": "true_false",
+            "options": {
+                "A": "True",
+                "B": "False"
+            },
+            "answer": "A",
+            "explanation": "Positive pantoscopic tilt increases the effective power experienced in the near zone."
+        }
+    ],
+    "Lenskart Brand Mastery": [
+        {
+            "question": "Which Lenskart innovation helps customers virtually try frames before purchase?",
+            "type": "multiple_choice",
+            "options": {
+                "A": "Frame Sync",
+                "B": "Virtual Mirror",
+                "C": "Lens Match",
+                "D": "Smart Fit"
+            },
+            "answer": "B",
+            "explanation": "The Virtual Mirror uses 3D face mapping to let customers try frames online."
+        },
+        {
+            "question": "True or False: Lenskart's Blu lenses are designed to filter digital blue light.",
+            "type": "true_false",
+            "options": {
+                "A": "True",
+                "B": "False"
+            },
+            "answer": "A",
+            "explanation": "Blu lenses reduce digital blue light, enhancing comfort for screen-heavy lifestyles."
+        }
+    ]
+}
